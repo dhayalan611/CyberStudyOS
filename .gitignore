@@ -1,0 +1,35 @@
+.env
+.env.*
+!.env.example
+!.env.test.example
+*.env
+.venv/
+__pycache__/
+*.py[cod]
+
+# Python development artifacts
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Frontend dependencies and generated output
+node_modules/
+dist/
+dist-ssr/
+*.tsbuildinfo
+
+# Logs and test coverage
+*.log
+logs/
+coverage/
+htmlcov/
+.coverage
+.coverage.*
+
+# Local editor and operating-system files
+**/.vscode/*
+!**/.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

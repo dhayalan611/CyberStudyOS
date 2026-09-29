@@ -1,0 +1,25 @@
+@import "tailwindcss";
+.app-layout[data-compact="true"] > div > header { height: 4rem; padding-inline: 1rem; }
+.app-layout[data-compact="true"] main { padding: 1.5rem; }
+.app-layout[data-compact="true"] .settings-card { padding: 1rem; }
+.app-layout[data-compact="true"] .settings-page { gap: 1rem; }
+/* Shared shell behavior applies to every route. */
+@media (max-width: 767px) {
+  .app-layout { flex-direction: column; }
+  .app-layout > aside { width: 100%; min-height: 0; max-height: 10rem; flex-shrink: 0; }
+  .app-layout > aside > div { display: none; }
+  .app-layout > aside > nav { padding: 0.5rem; }
+  .app-layout > aside nav > div { margin-bottom: 0.5rem; }
+  .app-layout > aside nav > div > p { display: none; }
+  .app-layout > aside nav > div > div { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .app-layout > aside nav a { width: auto; margin: 0; }
+  .app-layout > div { min-height: 0; }
+  .app-layout > div > header { min-height: 3.5rem; height: auto; flex-shrink: 0; padding: 0.75rem 1rem; }
+  .app-layout > div > header > div:nth-child(2),
+  .app-layout > div > header > div:first-child > span:not(:first-child),
+  .app-layout > div > header > div:last-child > button,
+  .app-layout > div > header > div:last-child > div { display: none; }
+  .app-layout main { padding: 1rem; }
+  .app-layout[data-compact="true"] main { padding: 0.75rem; }
+  .app-layout[data-compact="true"] > div > header { padding: 0.5rem 0.75rem; }
+}
