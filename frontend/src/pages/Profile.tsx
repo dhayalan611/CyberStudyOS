@@ -81,7 +81,7 @@ export default function Profile() {
       </div>
       <section className={card} aria-labelledby="profile-privacy">
         <h2 id="profile-privacy" className="flex items-center gap-2 text-lg font-semibold text-white"><ShieldCheck aria-hidden="true" size={20} className="text-cyan-400" />Privacy / Local Profile</h2>
-        <p className="mt-3 text-sm leading-6 text-slate-400">Profile information is stored locally in this browser for V1. It is not an authenticated public account and does not sync to the cloud. Profile information is not sent to the AI assistant.</p>
+        <p className="mt-3 text-sm leading-6 text-slate-400">This learner profile is stored in this browser, separate from your signed-in account. On a shared device, it is shared across accounts and remains after logout. It does not sync to PostgreSQL and is not sent to the AI assistant.</p>
         <p className="mt-2 text-sm text-slate-400">Use Add for each skill or goal, then Save Profile to keep your changes.</p>
       </section>
       <p role="status" aria-live="polite" className="min-h-5 text-sm text-slate-300">{status}</p>

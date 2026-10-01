@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..auth import CurrentUser
 from ..database import get_db
 from ..models.project import Project
 from ..schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
@@ -15,23 +16,23 @@ DatabaseSession = Annotated[Session, Depends(get_db)]
 
 
 @router.get("", response_model=list[ProjectResponse])
-def list_projects(db: DatabaseSession):
+def list_projects(db: DatabaseSession, current_user: CurrentUser):
     return db.scalars(
-        select(Project).order_by(Project.updated_at.desc(), Project.id.desc())
+        select(Project).where(Project.user_id == current_user.id).order_by(Project.updated_at.desc(), Project.id.desc())
     ).all()
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
-def get_project(project_id: int, db: DatabaseSession):
-    project = db.get(Project, project_id)
+def get_project(project_id: int, db: DatabaseSession, current_user: CurrentUser):
+    project = db.scalar(select(Project).where(Project.user_id == current_user.id).where(Project.id == project_id))
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
 
 
 @router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
-def create_project(project: ProjectCreate, db: DatabaseSession):
-    db_project = Project(**project.model_dump())
+def create_project(project: ProjectCreate, db: DatabaseSession, current_user: CurrentUser):
+    db_project = Project(**project.model_dump(), user_id=current_user.id)
     if db_project.status == "Completed":
         db_project.completed_at = datetime.now(timezone.utc)
     db.add(db_project)
@@ -41,10 +42,10 @@ def create_project(project: ProjectCreate, db: DatabaseSession):
 
 
 @router.patch("/{project_id}", response_model=ProjectResponse)
-def update_project(project_id: int, update: ProjectUpdate, db: DatabaseSession):
+def update_project(project_id: int, update: ProjectUpdate, db: DatabaseSession, current_user: CurrentUser):
     # Serialize changes so completion transitions use the latest stored status.
     project = db.scalar(
-        select(Project).where(Project.id == project_id).with_for_update()
+        select(Project).where(Project.user_id == current_user.id).where(Project.id == project_id).with_for_update()
     )
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")

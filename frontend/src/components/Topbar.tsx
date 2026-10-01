@@ -6,8 +6,11 @@ import {
 } from "lucide-react";
 
 import { Link } from "react-router-dom";
+import { useSyncExternalStore } from "react";
+import { authSession } from "../auth/session";
 
 function Topbar() {
+  const { user } = useSyncExternalStore(authSession.subscribe, authSession.getSnapshot);
   return (
     <header className="flex h-20 shrink-0 items-center justify-between border-b border-slate-800 bg-slate-950 px-6">
 
@@ -43,6 +46,8 @@ function Topbar() {
 
       {/* Right */}
       <div className="flex items-center gap-3">
+        <span className="auth-user max-w-24 truncate text-sm text-slate-300" title={user?.username}>{user?.username}</span>
+        <button type="button" className="auth-logout shrink-0 rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-100 hover:border-cyan-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400" onClick={() => void authSession.logout()}>Logout</button>
 
         <button disabled aria-label="Notifications coming soon" title="Notifications coming soon" className="rounded-lg p-2 text-slate-500 opacity-60">
           <Bell className="h-5 w-5" />

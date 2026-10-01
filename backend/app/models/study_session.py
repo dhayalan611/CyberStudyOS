@@ -1,15 +1,23 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import ForeignKey, DateTime, String, Text, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
+
+if TYPE_CHECKING:
+    from .user import User
 
 
 class StudySession(Base):
     __tablename__ = "study_sessions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", name="fk_study_sessions_user_id_users", ondelete="RESTRICT"), index=True
+    )
+    user: Mapped["User | None"] = relationship(back_populates="study_sessions")
     title: Mapped[str] = mapped_column(String(255))
     category: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text)

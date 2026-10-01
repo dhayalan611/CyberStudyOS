@@ -1,12 +1,13 @@
 // Read-only production UI smoke test. Start preview on :4173 and an isolated
 // headless Chrome on :9225. API lists are mocked empty; writes are rejected.
 import assert from "node:assert/strict";
+import { fixtureSource } from "./browserFixture.mjs";
 import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const tabs = await (await fetch("http://127.0.0.1:9225/json/list")).json();
-const socket = new WebSocket(tabs.find((tab) => tab.type === "page").webSocketDebuggerUrl);
+const tab = await (await fetch("http://127.0.0.1:9225/json/new?about:blank", { method: "PUT" })).json();
+const socket = new WebSocket(tab.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
 let sequence = 0;
 const pending = new Map();
@@ -45,17 +46,8 @@ const routes = ["/dashboard", "/learning", "/labs", "/notes", "/projects", "/cer
 try {
   await send("Runtime.enable");
   await send("Page.enable");
-  await send("Page.addScriptToEvaluateOnNewDocument", { source: `
-    const originalFetch = window.fetch;
-    window.auditRequests = [];
-    window.fetch = (url, options = {}) => {
-      if (String(url).includes('/api/')) {
-        window.auditRequests.push(String(url));
-        if (options.method && options.method !== 'GET') throw new Error('Writes disabled in audit');
-        return Promise.resolve(Response.json([]));
-      }
-      return originalFetch(url, options);
-    };
+  await send("Page.addScriptToEvaluateOnNewDocument", { source: fixtureSource + `
+    Object.keys(window.fixture.records).forEach(key => window.fixture.records[key] = []);
   ` });
   for (const width of [390, 1024, 1440]) {
     await send("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: false });
@@ -66,7 +58,7 @@ try {
         const main = document.querySelector('main');
         return { heading: main.querySelector('h1').textContent, width: main.clientWidth, overflow: main.scrollWidth - main.clientWidth,
           documentOverflow: document.documentElement.scrollWidth - innerWidth,
-          courseCalls: window.auditRequests.filter(url => url.endsWith('/api/courses')).length };
+          courseCalls: window.fixture.requests.filter(request => request.path === '/api/courses').length };
       })()`);
       assert.notEqual(result.heading, "Page not found", route);
       assert.ok(result.overflow <= 1, `${width} ${route}: content overflow ${result.overflow}`);
@@ -99,5 +91,5 @@ try {
   assert.deepEqual(errors, []);
   console.log("Redirects, not-found page, modal scrolling, autofocus, Escape and focus restoration PASS");
 } finally {
-  socket.close();
+  socket.close(); await fetch(`http://127.0.0.1:9225/json/close/${tab.id}`);
 }

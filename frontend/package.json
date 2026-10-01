@@ -4,6 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "test": "node --test --test-isolation=none tests/*.test.mjs",
+    "test:browser": "node tests/auth.browser.mjs && node tests/audit.browser.mjs && node tests/dashboard.browser.mjs && node tests/profile.browser.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

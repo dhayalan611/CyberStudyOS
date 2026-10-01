@@ -1,5 +1,11 @@
 # CyberStudy OS
 
+On `develop-v2`, Login/Register, cookie-based session restoration, protected routes,
+logout, and expired-session handling are implemented. See [V2 frontend authentication](frontend/AUTH.md)
+for current behavior, local configuration, and verification. Profile and Settings
+remain browser-local and shared across accounts on the same device. The V1 overview
+and roadmap below describe the earlier release; this V2 work is not a production-readiness claim.
+
 A cybersecurity-focused learning and productivity workstation designed to bring study tracking, hands-on practice, networking tools, CTF progress, planning, and AI-assisted learning into one workspace.
 
 Cybersecurity study often spans courses, lab platforms, personal notes, and separate task lists. CyberStudy OS brings those records together so a learner can see what they are working on, plan their next session, and connect practical work with the concepts they are learning. V1 focuses on a local, single-user workstation.
@@ -195,7 +201,10 @@ The examples are [backend/.env.example](backend/.env.example) and [frontend/.env
 | `DATABASE_URL` | Backend | Required SQLAlchemy PostgreSQL URL using `postgresql+psycopg://USER:PASSWORD@localhost:5432/cyberstudy`; all credentials shown here are placeholders. Percent-encode special characters in URL credentials. |
 | `GEMINI_API_KEY` | Backend | Optional for startup; required for AI replies. The example leaves this blank. |
 | `CORS_ORIGINS` | Backend | JSON array of allowed browser origins. The example includes localhost and 127.0.0.1 on ports 5173 and 4173. |
-| `VITE_API_BASE_URL` | Frontend | Public API base URL, defaulting to `http://127.0.0.1:8000`. It must contain no secrets. |
+| `AUTH_LOGIN_RATE_LIMIT` | Backend | Login attempts per direct client IP per rate-limit window; default 10. |
+| `AUTH_REGISTER_RATE_LIMIT` | Backend | Registration attempts per direct client IP per rate-limit window; default 5. |
+| `AUTH_RATE_LIMIT_WINDOW_SECONDS` | Backend | Sliding-window length in seconds; default 60. |
+| `VITE_API_BASE_URL` | Frontend | Optional public API base URL. Local default follows the browser hostname on port 8000 so `localhost` and `127.0.0.1` are not mixed. It must contain no secrets. |
 
 Backend settings read `backend/.env`; process environment variables take precedence. Restart the backend after changing them. Restart Vite after frontend environment changes, or rebuild for production output. `VITE_*` values are exposed to the browser. The Gemini model is a code constant in `backend/app/config.py`, not an environment variable in the current example.
 
@@ -230,7 +239,7 @@ cd frontend
 npm run dev
 ```
 
-- Frontend: `http://localhost:5173` by default; `/` redirects to `/dashboard`.
+- Frontend: `http://localhost:5173` by default; `/` redirects to `/dashboard`. The unconfigured API default follows this hostname at port 8000.
 - FastAPI Swagger UI: `http://127.0.0.1:8000/docs`.
 - API health: `http://127.0.0.1:8000/api/health`.
 

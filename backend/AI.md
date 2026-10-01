@@ -119,3 +119,18 @@ The second reply should quiz you on TCP/UDP, and the third should evaluate your
 answer against question 1 of that quiz. In browser developer tools, the second
 POST should contain two history entries and the third four; the newest prompt
 belongs only in `message`. These three sends make three Gemini generation calls.
+
+## V2 Step 2B authentication and isolation
+
+`POST /api/ai/chat` requires a valid HttpOnly authentication cookie and a trusted
+Origin, matching the other private mutations. Missing/invalid/expired cookies
+return 401; untrusted origins return 403. Requests cannot select another user ID.
+The context loader filters each supported source by the current user before
+ordering/limiting records; NULL-owned records are excluded. Learning uses only
+owned course summaries, including topic-completion counts. Raw topic text, tasks,
+study sessions, and browser-local Profile are not included or selectable sources.
+The existing explicit source opt-in and context size limits are unchanged.
+All API responses are marked `Cache-Control: no-store`.
+
+Isolation tests create records for two users plus unowned legacy rows and inspect
+mocked Gemini payloads in both directions. No real Gemini call is needed.

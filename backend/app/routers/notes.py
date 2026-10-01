@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..auth import CurrentUser
 from ..database import get_db
 from ..models.note import Note
 from ..schemas.note import NoteCreate, NoteResponse, NoteUpdate
@@ -14,23 +15,23 @@ DatabaseSession = Annotated[Session, Depends(get_db)]
 
 
 @router.get("", response_model=list[NoteResponse])
-def list_notes(db: DatabaseSession):
+def list_notes(db: DatabaseSession, current_user: CurrentUser):
     return db.scalars(
-        select(Note).order_by(Note.pinned.desc(), Note.updated_at.desc(), Note.id.desc())
+        select(Note).where(Note.user_id == current_user.id).order_by(Note.pinned.desc(), Note.updated_at.desc(), Note.id.desc())
     ).all()
 
 
 @router.get("/{note_id}", response_model=NoteResponse)
-def get_note(note_id: int, db: DatabaseSession):
-    note = db.get(Note, note_id)
+def get_note(note_id: int, db: DatabaseSession, current_user: CurrentUser):
+    note = db.scalar(select(Note).where(Note.user_id == current_user.id).where(Note.id == note_id))
     if note is None:
         raise HTTPException(status_code=404, detail="Note not found")
     return note
 
 
 @router.post("", response_model=NoteResponse, status_code=status.HTTP_201_CREATED)
-def create_note(note: NoteCreate, db: DatabaseSession):
-    db_note = Note(**note.model_dump())
+def create_note(note: NoteCreate, db: DatabaseSession, current_user: CurrentUser):
+    db_note = Note(**note.model_dump(), user_id=current_user.id)
     db.add(db_note)
     db.commit()
     db.refresh(db_note)
@@ -38,8 +39,8 @@ def create_note(note: NoteCreate, db: DatabaseSession):
 
 
 @router.patch("/{note_id}", response_model=NoteResponse)
-def update_note(note_id: int, update: NoteUpdate, db: DatabaseSession):
-    note = db.scalar(select(Note).where(Note.id == note_id).with_for_update())
+def update_note(note_id: int, update: NoteUpdate, db: DatabaseSession, current_user: CurrentUser):
+    note = db.scalar(select(Note).where(Note.user_id == current_user.id).where(Note.id == note_id).with_for_update())
     if note is None:
         raise HTTPException(status_code=404, detail="Note not found")
     for field, value in update.model_dump(exclude_unset=True).items():

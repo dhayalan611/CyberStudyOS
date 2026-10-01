@@ -11,6 +11,9 @@ from pydantic import SecretStr
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import get_db
+from app.auth import COOKIE_NAME, create_access_token
+from app.config import settings
+from app.models.user import User
 from app.main import app
 from app.services import ai
 from app.schemas.ai import HISTORY_CONTEXT_LIMIT, MAX_HISTORY_ENTRIES, MAX_HISTORY_CONTENT_LENGTH
@@ -27,6 +30,14 @@ class AITests(unittest.TestCase):
         self.generate = self.sdk.return_value.__enter__.return_value.models.generate_content
         self.generate.return_value = SimpleNamespace(text="  A subnet is a smaller network.  ")
         self.client = self.enterContext(TestClient(app))
+        # Unit tests mock database I/O, but exercise actual signed-cookie auth.
+        self.auth_user = User(id=123, username="ai_unit", email="ai@example.com", password_hash="unused")
+        db = MagicMock()
+        db.get.return_value = self.auth_user
+        app.dependency_overrides[get_db] = lambda: db
+        self.addCleanup(app.dependency_overrides.pop, get_db, None)
+        self.client.cookies.set(COOKIE_NAME, create_access_token(self.auth_user.id))
+        self.client.headers["Origin"] = settings.CORS_ORIGINS[0]
 
     def chat(self, payload=None):
         return self.client.post("/api/ai/chat", json=payload or {"message": "Explain subnetting simply"})
@@ -103,8 +114,9 @@ class AITests(unittest.TestCase):
 
     def test_no_context_does_not_query_database(self):
         db = MagicMock()
+        db.get.return_value = self.auth_user
         app.dependency_overrides[get_db] = lambda: db
-        self.addCleanup(app.dependency_overrides.pop, get_db)
+        self.addCleanup(app.dependency_overrides.pop, get_db, None)
         self.assertEqual(self.chat().status_code, 200)
         db.execute.assert_not_called()
         parts = self.generate.call_args.kwargs["contents"][-1].parts
@@ -112,9 +124,10 @@ class AITests(unittest.TestCase):
 
     def test_selected_context_is_separate_from_message(self):
         db = MagicMock()
+        db.get.return_value = self.auth_user
         db.execute.return_value.mappings.return_value.all.return_value = [{"title": "Network Foundations"}]
         app.dependency_overrides[get_db] = lambda: db
-        self.addCleanup(app.dependency_overrides.pop, get_db)
+        self.addCleanup(app.dependency_overrides.pop, get_db, None)
         self.assertEqual(self.chat({"message": "What next?", "context_sources": ["learning"]}).status_code, 200)
         db.execute.assert_called_once()
         parts = self.generate.call_args.kwargs["contents"][-1].parts
@@ -125,9 +138,10 @@ class AITests(unittest.TestCase):
 
     def test_context_failure_stops_generation(self):
         db = MagicMock()
+        db.get.return_value = self.auth_user
         db.execute.side_effect = SQLAlchemyError("secret database details")
         app.dependency_overrides[get_db] = lambda: db
-        self.addCleanup(app.dependency_overrides.pop, get_db)
+        self.addCleanup(app.dependency_overrides.pop, get_db, None)
         response = self.chat({"message": "Quiz me", "context_sources": ["notes"]})
         self.assertEqual(response.status_code, 503)
         self.assertIn("Could not load notes context", response.json()["detail"])

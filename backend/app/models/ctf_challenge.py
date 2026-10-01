@@ -1,9 +1,13 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, String, Text, func, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import ForeignKey, CheckConstraint, DateTime, String, Text, func, text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
+
+if TYPE_CHECKING:
+    from .user import User
 
 
 class CTFChallenge(Base):
@@ -16,6 +20,10 @@ class CTFChallenge(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", name="fk_ctf_challenges_user_id_users", ondelete="RESTRICT"), index=True
+    )
+    user: Mapped["User | None"] = relationship(back_populates="ctf_challenges")
     title: Mapped[str] = mapped_column(String(255))
     platform: Mapped[str] = mapped_column(String(255))
     category: Mapped[str] = mapped_column(String(255))

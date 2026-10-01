@@ -1,10 +1,11 @@
-// Read-only smoke test. Requires the app on :5173, API on :8000, and
-// an isolated headless Chrome instance with --remote-debugging-port=9223.
+// Mocked browser test. Requires production preview on :4173 and
+// an isolated headless Chrome instance with --remote-debugging-port=9225.
 import assert from "node:assert/strict";
+import { fixtureSource } from "./browserFixture.mjs";
 import { mkdir, writeFile } from "node:fs/promises";
 
-const tabs = await (await fetch("http://127.0.0.1:9223/json/list")).json();
-const socket = new WebSocket(tabs.find((tab) => tab.type === "page").webSocketDebuggerUrl);
+const tab = await (await fetch("http://127.0.0.1:9225/json/new?about:blank", { method: "PUT" })).json();
+const socket = new WebSocket(tab.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
 let sequence = 0;
 const pending = new Map();
@@ -38,9 +39,11 @@ async function waitFor(expression) {
 const settled = `document.querySelector('.dashboard-page') && !document.querySelector('.dashboard-page .animate-pulse') && !document.querySelector('.dashboard-page [role="status"] .sr-only') && !document.querySelector('.dashboard-page [role="status"] > .sr-only')`;
 const loaded = `document.querySelector('.dashboard-page') && !document.querySelector('.dashboard-page').innerText.includes('Loading')`;
 try {
+  await send("Page.enable");
   await send("Network.enable");
+  await send("Page.addScriptToEvaluateOnNewDocument", { source: fixtureSource });
   await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
-  await send("Page.navigate", { url: "http://localhost:5173/dashboard" });
+  await send("Page.navigate", { url: "http://127.0.0.1:4173/dashboard" });
   await waitFor(loaded);
   await waitFor(settled);
   const actual = await evaluate(`(async () => {
@@ -68,7 +71,7 @@ try {
   for (const title of actual.today) assert.ok(actual.text.includes(title));
   const renderedPoints = await evaluate(`[...document.querySelectorAll('dt')].find(e=>e.textContent==='Completed Points').nextElementSibling.textContent`);
   assert.equal(Number(renderedPoints), actual.points);
-  console.log("Live database summary verified:", JSON.stringify({ records: actual.counts, values: actual.rendered }));
+  console.log("Mocked API summary verified:", JSON.stringify({ records: actual.counts, values: actual.rendered }));
   await mkdir(new URL("../node_modules/.tmp/", import.meta.url), { recursive: true });
   for (const width of [1440, 1024, 390]) {
     await send("Emulation.setDeviceMetricsOverride", { width, height: 1000, deviceScaleFactor: 1, mobile: false });
@@ -80,22 +83,21 @@ try {
   }
   await send("Page.reload"); await waitFor(loaded); await waitFor(settled);
   assert.deepEqual(await evaluate(`[...document.querySelectorAll('.dashboard-page > div:nth-child(2) section')].map(s => s.querySelector('p').textContent)`), actual.expected);
-  await send("Network.setBlockedURLs", { urls: ["*127.0.0.1:8000/api/ctf*"] });
-  await send("Page.reload"); await waitFor(loaded); await waitFor(settled);
+  await evaluate(`window.fixture.failCTF = true`);
+  await evaluate(`[...document.querySelectorAll('button')].find(b => b.textContent === 'Refresh').click()`); await waitFor(loaded); await waitFor(settled);
   const partial = await evaluate(`[...document.querySelectorAll('.dashboard-page > div:nth-child(2) section')].map(s => s.querySelector('p').textContent)`);
   assert.equal(partial[2], "Temporarily unavailable");
   assert.equal(partial[0], actual.expected[0]); assert.equal(partial[1], actual.expected[1]); assert.equal(partial[3], actual.expected[3]);
-  await send("Network.setBlockedURLs", { urls: [] });
+  await evaluate(`window.fixture.failCTF = false`);
   await evaluate(`[...document.querySelectorAll('button')].find(b => b.textContent === 'Refresh').click()`);
   await waitFor(loaded); await waitFor(settled);
   for (const route of ["/tasks", "/planner", "/ai", "/ctf", "/networking", "/learning", "/projects", "/certifications"]) {
     await evaluate(`document.querySelector('.dashboard-page a[href="${route}"]').click()`);
     await waitFor(`location.pathname === '${route}' && !document.querySelector('.dashboard-page')`);
-    await send("Page.navigate", { url: "http://localhost:5173/dashboard" });
+    await send("Page.navigate", { url: "http://127.0.0.1:4173/dashboard" });
     await waitFor(loaded); await waitFor(settled);
   }
-  console.log("Passed: live totals, today's preview, completed CTF points, refresh persistence, CTF failure/recovery, eight routes, responsive widths 1440/1024/390.");
+  console.log("Passed: fixture totals, today's preview, completed CTF points, refresh persistence, CTF failure/recovery, eight routes, responsive widths 1440/1024/390.");
 } finally {
-  await send("Network.setBlockedURLs", { urls: [] });
-  socket.close();
+  socket.close(); await fetch(`http://127.0.0.1:9225/json/close/${tab.id}`);
 }

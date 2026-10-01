@@ -7,5 +7,6 @@ from .project import Project
 from .topic import Topic
 from .task import Task
 from .study_session import StudySession
+from .user import User
 
-__all__ = ["Certification", "Course", "CTFChallenge", "Lab", "Note", "Project", "Topic", "Task", "StudySession"]
+__all__ = ["Certification", "Course", "CTFChallenge", "Lab", "Note", "Project", "Topic", "Task", "StudySession", "User"]

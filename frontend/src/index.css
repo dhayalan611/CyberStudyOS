@@ -17,9 +17,11 @@
   .app-layout > div > header { min-height: 3.5rem; height: auto; flex-shrink: 0; padding: 0.75rem 1rem; }
   .app-layout > div > header > div:nth-child(2),
   .app-layout > div > header > div:first-child > span:not(:first-child),
-  .app-layout > div > header > div:last-child > button,
+  .app-layout > div > header > div:last-child > button:not(.auth-logout),
+  .app-layout > div > header > div:last-child > a,
   .app-layout > div > header > div:last-child > div { display: none; }
   .app-layout main { padding: 1rem; }
+  .app-layout > div > header .auth-user { max-width: 4rem; }
   .app-layout[data-compact="true"] main { padding: 0.75rem; }
   .app-layout[data-compact="true"] > div > header { padding: 0.5rem 0.75rem; }
 }

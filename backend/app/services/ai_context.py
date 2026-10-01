@@ -34,46 +34,46 @@ def active_first(column):
     return case((column == "In Progress", 0), (column == "Completed", 2), else_=1)
 
 
-def context_query(source: ContextSource):
+def context_query(source: ContextSource, *, user_id: int):
     if source == "learning":
         return select(short(Course.title), short(Course.category), Course.progress,
-                      Course.completed_topics, Course.total_topics).order_by(
+                      Course.completed_topics, Course.total_topics).where(Course.user_id == user_id).order_by(
                           (Course.progress >= 100), Course.created_at.desc(), Course.id.desc())
     if source == "labs":
         return select(short(Lab.title), short(Lab.platform), short(Lab.category),
                       short(Lab.difficulty), short(Lab.status),
-                      (Lab.status == "Completed").label("completed")).order_by(
+                      (Lab.status == "Completed").label("completed")).where(Lab.user_id == user_id).order_by(
                           active_first(Lab.status), Lab.created_at.desc(), Lab.id.desc())
     if source == "notes":
         return select(short(Note.title), short(Note.category), short(Note.tags),
                       func.substr(Note.content, 1, MAX_NOTE_CHARACTERS).label("content_excerpt"),
                       (func.length(Note.content) > MAX_NOTE_CHARACTERS).label("excerpt_truncated")
-                      ).order_by(Note.updated_at.desc(), Note.id.desc())
+                      ).where(Note.user_id == user_id).order_by(Note.updated_at.desc(), Note.id.desc())
     if source == "projects":
         return select(short(Project.title), short(Project.category), short(Project.status),
-                      Project.progress, short(Project.technologies)).order_by(
+                      Project.progress, short(Project.technologies)).where(Project.user_id == user_id).order_by(
                           active_first(Project.status), Project.updated_at.desc(), Project.id.desc())
     if source == "certifications":
         return select(short(Certification.name), short(Certification.issuer),
                       short(Certification.status), Certification.issue_date,
-                      Certification.expiry_date).order_by(
+                      Certification.expiry_date).where(Certification.user_id == user_id).order_by(
                           Certification.updated_at.desc(), Certification.id.desc())
     if source == "ctf":
         return select(short(CTFChallenge.title), short(CTFChallenge.platform),
                       short(CTFChallenge.category), short(CTFChallenge.difficulty),
                       short(CTFChallenge.status), CTFChallenge.points,
-                      CTFChallenge.flag_captured, CTFChallenge.hints_used).order_by(
+                      CTFChallenge.flag_captured, CTFChallenge.hints_used).where(CTFChallenge.user_id == user_id).order_by(
                           active_first(CTFChallenge.status), CTFChallenge.updated_at.desc(),
                           CTFChallenge.id.desc())
     raise ValueError("Unsupported context source")
 
 
-def load_context(db: Session, sources: list[ContextSource]) -> dict:
+def load_context(db: Session, sources: list[ContextSource], *, user_id: int) -> dict:
     context = {}
     for source in sources:
         limit = MAX_RECORDS_PER_SOURCE[source]
         try:
-            rows = db.execute(context_query(source).limit(limit + 1)).mappings().all()
+            rows = db.execute(context_query(source, user_id=user_id).limit(limit + 1)).mappings().all()
         except SQLAlchemyError:
             raise HTTPException(
                 status_code=503,

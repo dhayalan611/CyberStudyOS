@@ -2,16 +2,27 @@
 import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+from fastapi import HTTPException
 
 from app.services.course_progress import recalculate_course_progress
 
 
 class CourseProgressTests(unittest.TestCase):
+    def test_foreign_or_unowned_course_refused_before_database_work(self):
+        for owner in (8, None):
+            db = MagicMock()
+            course = SimpleNamespace(id=1, user_id=owner, total_topics=1)
+            with self.assertRaises(HTTPException) as error:
+                recalculate_course_progress(db, course, user_id=7)
+            self.assertEqual(error.exception.status_code, 404)
+            db.flush.assert_not_called()
+            db.execute.assert_not_called()
+
     def calculate(self, planned, stored, completed):
-        course = SimpleNamespace(id=1, total_topics=planned)
+        course = SimpleNamespace(id=1, user_id=7, total_topics=planned)
         db = MagicMock()
         db.execute.return_value.one.return_value = (stored, completed)
-        recalculate_course_progress(db, course)
+        recalculate_course_progress(db, course, user_id=7)
         db.flush.assert_called_once()
         return course
 

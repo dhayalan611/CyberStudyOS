@@ -12,6 +12,9 @@ import uvicorn
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.auth import COOKIE_NAME, create_access_token
+from app.config import settings
+from app.models.user import User
 from app.main import app
 from test_database import integration_engine
 
@@ -65,6 +68,12 @@ class LabsTests(unittest.TestCase):
                 yield session
 
         app.dependency_overrides[get_db] = test_db
+        with Session(bind=self.connection, join_transaction_mode="create_savepoint") as session:
+            user = User(username="resource_test_user", email="resource_test@example.com", password_hash="unused-test-hash")
+            session.add(user)
+            session.commit()
+            self.user_id = user.id
+        self.auth_cookie = f"{COOKIE_NAME}={create_access_token(self.user_id)}"
 
     def tearDown(self):
         app.dependency_overrides.pop(get_db, None)
@@ -76,7 +85,7 @@ class LabsTests(unittest.TestCase):
         request = Request(
             self.url + path,
             data=json.dumps(payload).encode() if payload is not None else None,
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", "Origin": settings.CORS_ORIGINS[0], "Cookie": self.auth_cookie},
             method=method,
         )
         try:

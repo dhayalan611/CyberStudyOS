@@ -43,7 +43,7 @@ export default function Settings() {
       <section aria-labelledby="privacy-heading" className="settings-card rounded-2xl border border-slate-800 bg-slate-950 p-6">
         <h2 id="privacy-heading" className="flex items-center gap-3 text-lg font-semibold text-white"><ShieldCheck aria-hidden="true" className="h-5 w-5 text-cyan-400" />Data &amp; Privacy</h2>
         <ul className="mt-4 list-disc space-y-2 pl-5 text-sm leading-6 text-slate-400">
-          <li>V1 is a local single-user application. Learning, task, planner, and other records are stored in PostgreSQL.</li>
+          <li>Learning, task, planner, and other records are stored in PostgreSQL and accessed through your authenticated account.</li>
           <li>AI requests go through FastAPI to Gemini. Only selected application context is included.</li>
           <li>Gemini API credentials remain on the backend.</li>
         </ul>
@@ -52,6 +52,7 @@ export default function Settings() {
 
     <section aria-labelledby="preferences-heading" className="settings-card rounded-2xl border border-slate-800 bg-slate-950 p-6">
       <h2 id="preferences-heading" className="text-lg font-semibold text-white">Local Preferences</h2>
+      <p className="mt-2 text-sm leading-6 text-slate-400">Settings and Profile are browser preferences, not account-specific. On a shared device, they remain available across accounts and after logout.</p>
       <p className="mt-2 text-sm leading-6 text-slate-400">UI preferences and your local Profile are stored in this browser. Resetting preferences does not delete your Profile, study records, conversations, or PostgreSQL data.</p>
       <button ref={resetButton} type="button" onClick={() => dialog.current?.showModal()} className={`mt-4 rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium text-slate-100 hover:border-cyan-400 hover:text-cyan-300 ${focus}`}>Reset Preferences</button>
       <p role="status" className="mt-3 min-h-5 text-sm text-slate-300">{status}</p>

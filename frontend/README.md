@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-For a fresh checkout, copy `.env.example` to `.env` if you need explicit frontend configuration. `VITE_API_BASE_URL` points to FastAPI and defaults to `http://127.0.0.1:8000`. Frontend environment variables are public; never put a Gemini key or database credentials here.
+For a fresh checkout, copy `.env.example` to `.env` only if you need an explicit frontend configuration. Without an override, the local API URL follows the browser hostname on port 8000 (`localhost` stays with `localhost`; `127.0.0.1` stays with `127.0.0.1`) so SameSite auth cookies work. If `VITE_API_BASE_URL` is set, use the same hostname as the frontend. Frontend environment variables are public; never put a Gemini key or database credentials here.
 
 ## Checks and production build
 

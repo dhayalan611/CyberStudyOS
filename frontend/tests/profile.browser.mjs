@@ -1,9 +1,10 @@
-﻿// Requires Vite on :5175 and an isolated Chrome debugging instance on :9225. No backend needed.
+﻿// Requires production preview on :4173 and isolated Chrome on :9225. All APIs mocked.
 import assert from "node:assert/strict";
+import { fixtureSource } from "./browserFixture.mjs";
 import { mkdir, writeFile } from "node:fs/promises";
 
-const tabs = await (await fetch("http://127.0.0.1:9225/json/list")).json();
-const socket = new WebSocket(tabs.find((tab) => tab.type === "page").webSocketDebuggerUrl);
+const tab = await (await fetch("http://127.0.0.1:9225/json/new?about:blank", { method: "PUT" })).json();
+const socket = new WebSocket(tab.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
 let sequence = 0;
 const pending = new Map();
@@ -41,12 +42,17 @@ async function fill(id, value) {
   await evaluate(`(() => { const e = document.getElementById(${JSON.stringify(id)}); Object.getOwnPropertyDescriptor(e.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, 'value').set.call(e, ${JSON.stringify(value)}); e.dispatchEvent(new Event('input', { bubbles: true })); })()`);
 }
 async function reload() {
+  // Network events cannot see intercepted fetches. Check the fixture too, before
+  // each reload resets its request log; only startup session restoration is allowed.
+  assert.deepEqual(await evaluate(`window.fixture.requests.filter(r => r.path !== '/api/auth/me')`), []);
   await evaluate(`document.querySelector('.profile-page')?.setAttribute('data-old', 'true')`);
   await send('Page.reload');
   await waitFor(`${loaded} && !document.querySelector('.profile-page').hasAttribute('data-old')`);
 }
 try {
-  await send('Page.navigate', { url: 'http://127.0.0.1:5175/profile' });
+  await send('Page.enable');
+  await send('Page.addScriptToEvaluateOnNewDocument', { source: fixtureSource });
+  await send('Page.navigate', { url: 'http://127.0.0.1:4173/profile' });
   await waitFor(loaded);
   await evaluate(`localStorage.removeItem('cyberstudy.profile'); localStorage.setItem('cyberstudy.settings', JSON.stringify({version:1,compactMode:true})); localStorage.setItem('test.other', 'keep')`);
   await reload();
@@ -106,5 +112,5 @@ try {
   assert.match(await evaluate(`document.querySelector('.profile-page [role="status"]').textContent`), /could not be saved/);
   await reload();
   console.log('PASS: route, editing, explicit save, reload persistence, skills, goals, clear confirmation/cancellation, Settings isolation, malformed data, save failure, no API requests, responsive widths 1440/768/390.');
-} finally { socket.close(); }
+} finally { socket.close(); await fetch(`http://127.0.0.1:9225/json/close/${tab.id}`); }
 

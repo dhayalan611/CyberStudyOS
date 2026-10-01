@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
-import AppLayout from "./layouts/AppLayout";
+import { AuthStartup, ProtectedApp } from "./auth/AuthBoundary";
+import AuthPage from "./pages/AuthPage";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Learning = lazy(() => import("./pages/Learning"));
@@ -23,9 +24,12 @@ const Profile = lazy(() => import("./pages/Profile"));
 
 export default function App() {
   return <BrowserRouter>
+    <AuthStartup />
     <Suspense fallback={<p role="status" className="p-8 text-slate-400">Loading page...</p>}>
       <Routes>
-        <Route element={<AppLayout />}>
+        <Route path="/login" element={<AuthPage key="login" mode="login" />} />
+        <Route path="/register" element={<AuthPage key="register" mode="register" />} />
+        <Route element={<ProtectedApp />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/reference" element={<Navigate to="/cyber-reference" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />

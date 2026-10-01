@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..auth import CurrentUser
 from ..database import get_db
 from ..models.ctf_challenge import CTFChallenge
 from ..schemas.ctf_challenge import CTFChallengeCreate, CTFChallengeResponse, CTFChallengeUpdate
@@ -15,23 +16,23 @@ DatabaseSession = Annotated[Session, Depends(get_db)]
 
 
 @router.get("", response_model=list[CTFChallengeResponse])
-def list_challenges(db: DatabaseSession):
+def list_challenges(db: DatabaseSession, current_user: CurrentUser):
     return db.scalars(
-        select(CTFChallenge).order_by(CTFChallenge.updated_at.desc(), CTFChallenge.id.desc())
+        select(CTFChallenge).where(CTFChallenge.user_id == current_user.id).order_by(CTFChallenge.updated_at.desc(), CTFChallenge.id.desc())
     ).all()
 
 
 @router.get("/{challenge_id}", response_model=CTFChallengeResponse)
-def get_challenge(challenge_id: int, db: DatabaseSession):
-    challenge = db.get(CTFChallenge, challenge_id)
+def get_challenge(challenge_id: int, db: DatabaseSession, current_user: CurrentUser):
+    challenge = db.scalar(select(CTFChallenge).where(CTFChallenge.user_id == current_user.id).where(CTFChallenge.id == challenge_id))
     if challenge is None:
         raise HTTPException(status_code=404, detail="CTF challenge not found")
     return challenge
 
 
 @router.post("", response_model=CTFChallengeResponse, status_code=status.HTTP_201_CREATED)
-def create_challenge(payload: CTFChallengeCreate, db: DatabaseSession):
-    challenge = CTFChallenge(**payload.model_dump())
+def create_challenge(payload: CTFChallengeCreate, db: DatabaseSession, current_user: CurrentUser):
+    challenge = CTFChallenge(**payload.model_dump(), user_id=current_user.id)
     # Creating directly in an active state is also supported.
     if challenge.status == "In Progress":
         challenge.started_at = datetime.now(timezone.utc)
@@ -44,10 +45,10 @@ def create_challenge(payload: CTFChallengeCreate, db: DatabaseSession):
 
 
 @router.patch("/{challenge_id}", response_model=CTFChallengeResponse)
-def update_challenge(challenge_id: int, update: CTFChallengeUpdate, db: DatabaseSession):
+def update_challenge(challenge_id: int, update: CTFChallengeUpdate, db: DatabaseSession, current_user: CurrentUser):
     # Serialize transitions so concurrent updates preserve the first start time.
     challenge = db.scalar(
-        select(CTFChallenge).where(CTFChallenge.id == challenge_id).with_for_update()
+        select(CTFChallenge).where(CTFChallenge.user_id == current_user.id).where(CTFChallenge.id == challenge_id).with_for_update()
     )
     if challenge is None:
         raise HTTPException(status_code=404, detail="CTF challenge not found")

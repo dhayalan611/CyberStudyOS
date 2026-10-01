@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..auth import CurrentUser
 from ..database import get_db
 from ..models.certification import Certification
 from ..schemas.certification import (
@@ -20,25 +21,25 @@ DatabaseSession = Annotated[Session, Depends(get_db)]
 
 
 @router.get("", response_model=list[CertificationResponse])
-def list_certifications(db: DatabaseSession):
+def list_certifications(db: DatabaseSession, current_user: CurrentUser):
     return db.scalars(
-        select(Certification).order_by(
+        select(Certification).where(Certification.user_id == current_user.id).order_by(
             Certification.updated_at.desc(), Certification.id.desc()
         )
     ).all()
 
 
 @router.get("/{certification_id}", response_model=CertificationResponse)
-def get_certification(certification_id: int, db: DatabaseSession):
-    certification = db.get(Certification, certification_id)
+def get_certification(certification_id: int, db: DatabaseSession, current_user: CurrentUser):
+    certification = db.scalar(select(Certification).where(Certification.user_id == current_user.id).where(Certification.id == certification_id))
     if certification is None:
         raise HTTPException(status_code=404, detail="Certification not found")
     return certification
 
 
 @router.post("", response_model=CertificationResponse, status_code=status.HTTP_201_CREATED)
-def create_certification(certification: CertificationCreate, db: DatabaseSession):
-    db_certification = Certification(**certification.model_dump())
+def create_certification(certification: CertificationCreate, db: DatabaseSession, current_user: CurrentUser):
+    db_certification = Certification(**certification.model_dump(), user_id=current_user.id)
     db.add(db_certification)
     db.commit()
     db.refresh(db_certification)
@@ -47,11 +48,11 @@ def create_certification(certification: CertificationCreate, db: DatabaseSession
 
 @router.patch("/{certification_id}", response_model=CertificationResponse)
 def update_certification(
-    certification_id: int, update: CertificationUpdate, db: DatabaseSession
+    certification_id: int, update: CertificationUpdate, db: DatabaseSession, current_user: CurrentUser
 ):
     # Serialize updates so validation sees the latest committed date pair.
     certification = db.scalar(
-        select(Certification)
+        select(Certification).where(Certification.user_id == current_user.id)
         .where(Certification.id == certification_id)
         .with_for_update()
     )
