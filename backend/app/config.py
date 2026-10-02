@@ -1,6 +1,7 @@
 from pathlib import Path
+from typing import Literal
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +12,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     AUTH_SECRET: SecretStr
     AUTH_COOKIE_SECURE: bool = True
+    AUTH_COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
     AUTH_TOKEN_MINUTES: int = Field(default=30, ge=1, le=1440)
     AUTH_LOGIN_RATE_LIMIT: int = Field(default=10, ge=1, le=10000)
     AUTH_REGISTER_RATE_LIMIT: int = Field(default=5, ge=1, le=10000)
@@ -47,6 +49,12 @@ class Settings(BaseSettings):
         if any(origin in {"*", "null"} for origin in value):
             raise ValueError("Explicit trusted origins are required")
         return value
+
+    @model_validator(mode="after")
+    def require_secure_cross_site_cookie(self):
+        if self.AUTH_COOKIE_SAMESITE == "none" and not self.AUTH_COOKIE_SECURE:
+            raise ValueError("AUTH_COOKIE_SAMESITE=none requires AUTH_COOKIE_SECURE=true")
+        return self
 
     model_config = SettingsConfigDict(
         hide_input_in_errors=True,

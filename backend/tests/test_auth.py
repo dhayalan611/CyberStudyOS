@@ -170,6 +170,25 @@ class AuthTests(unittest.TestCase):
             self.assertIn("/api/auth/" + path, schema["paths"])
         self.assertEqual(schema["components"]["securitySchemes"]["APIKeyCookie"]["in"], "cookie")
 
+    def test_cross_site_production_cookie_and_credentialed_cors(self):
+        self.register()
+        trusted_origin = settings.CORS_ORIGINS[0]
+        with patch.object(settings, "AUTH_COOKIE_SECURE", True), \
+             patch.object(settings, "AUTH_COOKIE_SAMESITE", "none"):
+            self.login()
+            cookie = self.last_headers["Set-Cookie"]
+            self.assertIn("HttpOnly", cookie)
+            self.assertIn("Secure", cookie)
+            self.assertIn("SameSite=none", cookie)
+            self.assertIn("Path=/", cookie)
+            self.assertNotIn("Domain=", cookie)
+            self.assertEqual(self.last_headers["Access-Control-Allow-Origin"], trusted_origin)
+            self.assertEqual(self.last_headers["Access-Control-Allow-Credentials"], "true")
+            self.request("POST", "logout", expected=204)
+            cleared = self.last_headers["Set-Cookie"]
+            self.assertIn("Secure", cleared)
+            self.assertIn("SameSite=none", cleared)
+
 
 class AuthConfigTests(unittest.TestCase):
     def test_generic_postgres_urls_use_installed_psycopg3_driver(self):
@@ -195,4 +214,7 @@ class AuthConfigTests(unittest.TestCase):
             Settings(_env_file=None, DATABASE_URL="unused")
         with self.assertRaises(ValidationError):
             Settings(_env_file=None, DATABASE_URL="unused", AUTH_SECRET="a" * 64, CORS_ORIGINS=["*"])
+        with self.assertRaises(ValidationError):
+            Settings(_env_file=None, DATABASE_URL="unused", AUTH_SECRET="a" * 64,
+                     AUTH_COOKIE_SECURE=False, AUTH_COOKIE_SAMESITE="none")
         self.assertTrue(Settings(_env_file=None, DATABASE_URL="unused", AUTH_SECRET="a" * 64).AUTH_COOKIE_SECURE)

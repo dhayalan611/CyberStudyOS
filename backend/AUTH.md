@@ -14,6 +14,7 @@ Install `requirements-dev.txt` in the backend virtual environment. In ignored
 | --- | --- |
 | `AUTH_SECRET` | Required random secret of at least 32 bytes, backend only. Missing, short, and example-placeholder values fail startup. |
 | `AUTH_COOKIE_SECURE` | Defaults to `true`. Set `false` only for local HTTP development; production requires HTTPS and `true`. |
+| `AUTH_COOKIE_SAMESITE` | Defaults to `lax`. Use `none` only for a cross-site HTTPS frontend/API deployment; this is rejected unless `AUTH_COOKIE_SECURE=true`. |
 | `AUTH_TOKEN_MINUTES` | JWT and cookie lifetime in minutes; default 30, allowed 1–1440. |
 | `AUTH_LOGIN_RATE_LIMIT` | Login attempts per direct client IP in the window; default 10. |
 | `AUTH_REGISTER_RATE_LIMIT` | Registration attempts per direct client IP in the window; default 5. |
@@ -72,13 +73,15 @@ dependency used by `/api/auth/me` and the `CurrentUser` dependency on private
 resource APIs. `CurrentUser` also requires an exact trusted Origin on POST, PUT,
 PATCH, and DELETE requests. Unsupported methods remain unavailable.
 
-The host-only `cyberstudy_session` cookie has `Path=/`, `HttpOnly`, `SameSite=Lax`,
-and a maximum age equal to the token lifetime. `Secure` defaults on. Tokens are
+The host-only `cyberstudy_session` cookie has `Path=/`, `HttpOnly`, configurable
+`SameSite` (default `Lax`), and a maximum age equal to the token lifetime. `Secure`
+defaults on. A cross-site HTTPS frontend/API deployment must use `SameSite=None`
+with `Secure=true`; the backend rejects the insecure combination. Tokens are
 never returned in JSON and must not be stored in localStorage. Future React calls
 must use `credentials: 'include'`; credentialed CORS is enabled for exact trusted
 origins. Use the same hostname on frontend/backend locally (both `localhost`, or
-both `127.0.0.1`). Production should use a same-site HTTPS frontend/API setup;
-cross-site cookies are outside this foundation.
+both `127.0.0.1`). A same-site HTTPS frontend/API setup remains preferable where
+available because browsers and users may restrict third-party cookies.
 
 Logout clears this browser's cookie. JWTs are stateless: a copied token remains
 valid until expiration, and there is no server-side revocation or refresh flow.

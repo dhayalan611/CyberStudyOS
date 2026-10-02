@@ -42,7 +42,7 @@ def login(payload: LoginRequest, response: Response, db: DatabaseSession):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     response.set_cookie(
         COOKIE_NAME, create_access_token(user.id), httponly=True,
-        secure=settings.AUTH_COOKIE_SECURE, samesite="lax", path="/",
+        secure=settings.AUTH_COOKIE_SECURE, samesite=settings.AUTH_COOKIE_SAMESITE, path="/",
         max_age=settings.AUTH_TOKEN_MINUTES * 60,
     )
     return user
@@ -51,7 +51,7 @@ def login(payload: LoginRequest, response: Response, db: DatabaseSession):
 @router.post("/logout", status_code=204, dependencies=mutations)
 def logout(response: Response):
     response.delete_cookie(COOKIE_NAME, path="/", secure=settings.AUTH_COOKIE_SECURE,
-                           httponly=True, samesite="lax")
+                           httponly=True, samesite=settings.AUTH_COOKIE_SAMESITE)
 
 
 @router.get("/me", response_model=CurrentUserResponse)
