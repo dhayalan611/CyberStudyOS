@@ -16,6 +16,7 @@ test("API URL supports configured hosts and a same-origin empty prefix", async (
   assert.equal((await load()).API_BASE_URL, "http://127.0.0.1:8000");
   assert.equal((await load({ VITE_API_BASE_URL: " https://example.test/ " })).API_BASE_URL, "https://example.test");
   assert.equal((await load({ VITE_API_BASE_URL: "" })).API_BASE_URL, "");
+  assert.equal((await load({ VITE_API_BASE_URL: "/" })).API_BASE_URL, "");
 });
 
 test("local API default follows the browser hostname so SameSite cookies are returned", async () => {

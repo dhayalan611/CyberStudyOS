@@ -62,6 +62,37 @@ Local HTTP requires backend `AUTH_COOKIE_SECURE=false`; HTTPS deployment require
 Secure cookies. Keep `AUTH_SECRET` and Gemini credentials on the backend only.
 See [backend authentication](../backend/AUTH.md) for the server configuration.
 
+## Production configuration
+
+The Vercel project must use `frontend` as its root directory. Its
+[`vercel.json`](vercel.json) sends `/api/*` to the Railway FastAPI service before
+the SPA fallback. Set the production `VITE_API_BASE_URL` to `/`; the API client
+normalizes that value to an empty prefix, so the browser calls the Vercel origin.
+Do not set the public variable to the Railway URL.
+
+The browser retains `https://cyber-study-os.vercel.app` as the request `Origin`
+through the external rewrite. Railway must therefore include that exact origin in
+`CORS_ORIGINS`; it is both the CORS allowlist and the trusted-Origin/CSRF allowlist.
+Use `AUTH_COOKIE_SECURE=true` and `AUTH_COOKIE_SAMESITE=lax`. The host-only cookie
+returned through the rewrite belongs to the Vercel host and remains HttpOnly, so
+production authentication no longer needs a cross-site `SameSite=None` cookie.
+
+Production values:
+
+```text
+# Vercel (Production environment)
+VITE_API_BASE_URL=/
+
+# Railway
+CORS_ORIGINS=["https://cyber-study-os.vercel.app"]
+AUTH_COOKIE_SECURE=true
+AUTH_COOKIE_SAMESITE=lax
+```
+
+If preview deployments must call the backend, add each intended preview origin
+explicitly; do not use a wildcard. Local development continues to use the existing
+hostname-aware port 8000 default and the local values documented above.
+
 ## Verification
 
 From `frontend`, with dependencies already installed and Node 24:

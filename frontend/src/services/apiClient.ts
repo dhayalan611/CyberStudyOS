@@ -1,5 +1,6 @@
 // Keep local HTTP cookie requests same-site: localhost and 127.0.0.1 are
-// different sites to the browser. Production should always configure the URL.
+// different sites to the browser. Production configures "/", normalized below
+// to an empty prefix, so browser requests use Vercel's same-origin /api proxy.
 const localApiBase = typeof window === "undefined"
   ? "http://127.0.0.1:8000"
   : `${window.location.protocol}//${window.location.hostname}:8000`;

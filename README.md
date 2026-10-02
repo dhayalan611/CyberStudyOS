@@ -208,6 +208,14 @@ The examples are [backend/.env.example](backend/.env.example) and [frontend/.env
 
 Backend settings read `backend/.env`; process environment variables take precedence. Restart the backend after changing them. Restart Vite after frontend environment changes, or rebuild for production output. `VITE_*` values are exposed to the browser. The Gemini model is a code constant in `backend/app/config.py`, not an environment variable in the current example.
 
+For the production Vercel/Railway topology, set Vercel's production
+`VITE_API_BASE_URL=/`. The frontend [`vercel.json`](frontend/vercel.json) proxies
+same-origin `/api/*` requests to Railway. Set Railway to
+`CORS_ORIGINS=["https://cyber-study-os.vercel.app"]`,
+`AUTH_COOKIE_SECURE=true`, and `AUTH_COOKIE_SAMESITE=lax`. The Vercel origin must
+remain explicit because the backend uses this allowlist for trusted-Origin/CSRF
+checks as well as CORS. See [frontend authentication](frontend/AUTH.md).
+
 ## Database Migrations
 
 From `backend`, apply the existing migration chain and inspect the installed revision:
