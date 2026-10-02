@@ -172,6 +172,20 @@ class AuthTests(unittest.TestCase):
 
 
 class AuthConfigTests(unittest.TestCase):
+    def test_generic_postgres_urls_use_installed_psycopg3_driver(self):
+        base = {"_env_file": None, "AUTH_SECRET": "a" * 64}
+        for url in (
+            "postgres://user:placeholder@host:5432/database?sslmode=require",
+            "postgresql://user:placeholder@host:5432/database?sslmode=require",
+        ):
+            configured = Settings(DATABASE_URL=url, **base).DATABASE_URL
+            self.assertEqual(
+                configured,
+                "postgresql+psycopg://user:placeholder@host:5432/database?sslmode=require",
+            )
+        explicit = "postgresql+psycopg://user:placeholder@host:5432/database"
+        self.assertEqual(Settings(DATABASE_URL=explicit, **base).DATABASE_URL, explicit)
+
     def test_rejects_missing_short_placeholder_secrets_and_wildcard_origins(self):
         from pydantic import ValidationError
         for secret in ("short", "REPLACE_WITH_A_RANDOM_SECRET_OF_AT_LEAST_32_BYTES"):

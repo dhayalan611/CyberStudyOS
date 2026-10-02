@@ -21,6 +21,18 @@ class Settings(BaseSettings):
         "http://localhost:4173", "http://127.0.0.1:4173",
     ]
 
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def use_psycopg3_driver(cls, value: object) -> object:
+        """Make provider-generic PostgreSQL URLs use the installed Psycopg 3 driver."""
+        if not isinstance(value, str):
+            return value
+        if value.startswith("postgres://"):
+            return "postgresql+psycopg://" + value.removeprefix("postgres://")
+        if value.startswith("postgresql://"):
+            return "postgresql+psycopg://" + value.removeprefix("postgresql://")
+        return value
+
     @field_validator("AUTH_SECRET")
     @classmethod
     def validate_auth_secret(cls, value: SecretStr) -> SecretStr:
